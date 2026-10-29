@@ -91,7 +91,7 @@ func (p *Process) createTimeWithContext(_ context.Context) (int64, error) {
 		return 0, err
 	}
 
-	return k.Proc.P_starttime.Sec*1000 + int64(k.Proc.P_starttime.Usec)/1000, nil
+	return int64(k.Proc.P_starttime.Sec)*1000 + int64(k.Proc.P_starttime.Usec)/1000, nil
 }
 
 func (p *Process) StatusWithContext(ctx context.Context) ([]string, error) {
