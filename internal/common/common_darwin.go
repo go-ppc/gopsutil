@@ -122,24 +122,27 @@ func NewCoreFoundationLib() (*CoreFoundationLib, error) {
 
 func (c *CoreFoundationLib) CFGetTypeID(cf uintptr) int64 {
 	fn := getFunc[CFGetTypeIDFunc](c.library, "CFGetTypeID")
-	return fn(cf)
+	return int64(fn(cf))
 }
 
 func (c *CoreFoundationLib) CFNumberCreate(allocator uintptr, theType int64, valuePtr unsafe.Pointer) unsafe.Pointer {
+	cIndex := toCFIndex(theType)
 	fn := getFunc[CFNumberCreateFunc](c.library, "CFNumberCreate")
-	return fn(allocator, theType, valuePtr)
+	return fn(allocator, cIndex, valuePtr)
 }
 
 func (c *CoreFoundationLib) CFNumberGetValue(num uintptr, theType int64, valuePtr unsafe.Pointer) bool {
+	cIndex := toCFIndex(theType)
 	fn := getFunc[CFNumberGetValueFunc](c.library, "CFNumberGetValue")
-	return fn(num, theType, valuePtr)
+	return fn(num, cIndex, valuePtr) != 0
 }
 
 func (c *CoreFoundationLib) CFDictionaryCreate(allocator uintptr, keys, values *unsafe.Pointer, numValues int64,
 	keyCallBacks, valueCallBacks uintptr,
 ) unsafe.Pointer {
+	cIndex := toCFIndex(numValues)
 	fn := getFunc[CFDictionaryCreateFunc](c.library, "CFDictionaryCreate")
-	return fn(allocator, keys, values, numValues, keyCallBacks, valueCallBacks)
+	return fn(allocator, keys, values, cIndex, keyCallBacks, valueCallBacks)
 }
 
 func (c *CoreFoundationLib) CFDictionaryAddValue(theDict, key, value uintptr) {
@@ -154,27 +157,30 @@ func (c *CoreFoundationLib) CFDictionaryGetValue(theDict, key uintptr) unsafe.Po
 
 func (c *CoreFoundationLib) CFArrayGetCount(theArray uintptr) int64 {
 	fn := getFunc[CFArrayGetCountFunc](c.library, "CFArrayGetCount")
-	return fn(theArray)
+	return int64(fn(theArray))
 }
 
 func (c *CoreFoundationLib) CFArrayGetValueAtIndex(theArray uintptr, index int64) unsafe.Pointer {
+	cIndex := toCFIndex(index)
 	fn := getFunc[CFArrayGetValueAtIndexFunc](c.library, "CFArrayGetValueAtIndex")
-	return fn(theArray, index)
+	return fn(theArray, cIndex)
 }
 
 func (c *CoreFoundationLib) CFStringCreateMutable(alloc uintptr, maxLength int64) unsafe.Pointer {
+	cIndex := toCFIndex(maxLength)
 	fn := getFunc[CFStringCreateMutableFunc](c.library, "CFStringCreateMutable")
-	return fn(alloc, maxLength)
+	return fn(alloc, cIndex)
 }
 
 func (c *CoreFoundationLib) CFStringGetLength(theString uintptr) int64 {
 	fn := getFunc[CFStringGetLengthFunc](c.library, "CFStringGetLength")
-	return fn(theString)
+	return int64(fn(theString))
 }
 
 func (c *CoreFoundationLib) CFStringGetCString(theString uintptr, buffer CStr, bufferSize int64, encoding uint32) {
+	cIndex := toCFIndex(bufferSize)
 	fn := getFunc[CFStringGetCStringFunc](c.library, "CFStringGetCString")
-	fn(theString, buffer, bufferSize, encoding)
+	fn(theString, buffer, cIndex, encoding)
 }
 
 func (c *CoreFoundationLib) CFStringCreateWithCString(alloc uintptr, cStr string, encoding uint32) unsafe.Pointer {
@@ -184,7 +190,7 @@ func (c *CoreFoundationLib) CFStringCreateWithCString(alloc uintptr, cStr string
 
 func (c *CoreFoundationLib) CFDataGetLength(theData uintptr) int64 {
 	fn := getFunc[CFDataGetLengthFunc](c.library, "CFDataGetLength")
-	return fn(theData)
+	return int64(fn(theData))
 }
 
 func (c *CoreFoundationLib) CFDataGetBytePtr(theData uintptr) unsafe.Pointer {
@@ -435,25 +441,27 @@ const (
 )
 
 // CoreFoundation types and constants.
+// CFBase.h defines Boolean as unsigned char (not C _Bool), at both widths.
+// CFIndex arguments panic with errCFIndexOutOfRange if they cannot fit C long.
 //
 // valuePtr on CFNumberCreate and CFNumberGetValue points at a caller-owned Go
 // value that CoreFoundation reads from or writes into, hence unsafe.Pointer; see
 // the note above the IOKit function types.
 type (
-	CFGetTypeIDFunc        func(cf uintptr) int64
-	CFNumberCreateFunc     func(allocator uintptr, theType int64, valuePtr unsafe.Pointer) unsafe.Pointer
-	CFNumberGetValueFunc   func(num uintptr, theType int64, valuePtr unsafe.Pointer) bool
-	CFDictionaryCreateFunc func(allocator uintptr, keys, values *unsafe.Pointer, numValues int64,
+	CFGetTypeIDFunc        func(cf uintptr) cfTypeID
+	CFNumberCreateFunc     func(allocator uintptr, theType cfIndex, valuePtr unsafe.Pointer) unsafe.Pointer
+	CFNumberGetValueFunc   func(num uintptr, theType cfIndex, valuePtr unsafe.Pointer) uint8
+	CFDictionaryCreateFunc func(allocator uintptr, keys, values *unsafe.Pointer, numValues cfIndex,
 		keyCallBacks, valueCallBacks uintptr) unsafe.Pointer
 	CFDictionaryAddValueFunc      func(theDict, key, value uintptr)
 	CFDictionaryGetValueFunc      func(theDict, key uintptr) unsafe.Pointer
-	CFArrayGetCountFunc           func(theArray uintptr) int64
-	CFArrayGetValueAtIndexFunc    func(theArray uintptr, index int64) unsafe.Pointer
-	CFStringCreateMutableFunc     func(alloc uintptr, maxLength int64) unsafe.Pointer
-	CFStringGetLengthFunc         func(theString uintptr) int64
-	CFStringGetCStringFunc        func(theString uintptr, buffer CStr, bufferSize int64, encoding uint32)
+	CFArrayGetCountFunc           func(theArray uintptr) cfIndex
+	CFArrayGetValueAtIndexFunc    func(theArray uintptr, index cfIndex) unsafe.Pointer
+	CFStringCreateMutableFunc     func(alloc uintptr, maxLength cfIndex) unsafe.Pointer
+	CFStringGetLengthFunc         func(theString uintptr) cfIndex
+	CFStringGetCStringFunc        func(theString uintptr, buffer CStr, bufferSize cfIndex, encoding uint32) uint8
 	CFStringCreateWithCStringFunc func(alloc uintptr, cStr string, encoding uint32) unsafe.Pointer
-	CFDataGetLengthFunc           func(theData uintptr) int64
+	CFDataGetLengthFunc           func(theData uintptr) cfIndex
 	CFDataGetBytePtrFunc          func(theData uintptr) unsafe.Pointer
 	CFReleaseFunc                 func(cf uintptr)
 )
