@@ -101,7 +101,7 @@ func UsersWithContext(ctx context.Context) ([]UserStat, error) {
 
 		var u utmp
 		br := bytes.NewReader(b)
-		err := binary.Read(br, binary.LittleEndian, &u)
+		err := binary.Read(br, binary.NativeEndian, &u)
 		if err != nil {
 			continue
 		}
